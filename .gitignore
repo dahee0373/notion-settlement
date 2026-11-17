@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Database
+*.db
+*.sqlite3
+
+# Local Output & Temporary Downloads
+downloads/*.xlsx
+output_settlement/*.xlsx
+
+# Local Binaries / Tools
+tools/
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

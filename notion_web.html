@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notion Settlement Workspace — 온라인 매출 정산</title>
+  <!-- Notion Inter Font -->
+  <link rel="preconnect" href="https://rsms.me/">
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+  <!-- SheetJS for local Excel parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    /* DESIGN-notion.md Tokens */
+    :root {
+      --primary: #0075de;
+      --primary-active: #005bab;
+      --secondary: #213183;
+      --canvas: #ffffff;
+      --canvas-soft: #f6f5f4;
+      --surface: #ffffff;
+      --ink: #000000;
+      --ink-secondary: #31302e;
+      --ink-muted: #615d59;
+      --ink-faint: #a39e98;
+      --hairline: #e6e6e6;
+      --accent-sky: #62aef0;
+      --accent-purple: #d6b6f6;
+      --accent-pink: #ff64c8;
+      --accent-orange: #dd5b00;
+      --accent-teal: #2a9d99;
+      --accent-green: #1aae39;
+      --radius-xs: 4px;
+      --radius-sm: 5px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --radius-full: 9999px;
+      --shadow-soft: rgba(0,0,0,0.01) 0 0.175px 1.04px, rgba(0,0,0,0.02) 0 0.8px 2.92px, rgba(0,0,0,0.027) 0 2px 7.8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background-color: var(--canvas-soft);
+      color: var(--ink);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 80px;
+    }
+
+    /* Hero Night Band (secondary: #213183) */
+    .hero-night {
+      background-color: var(--secondary);
+      color: #ffffff;
+      padding: 44px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-content {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .pill-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--accent-sky);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.125px;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      margin-bottom: 14px;
+    }
+
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-sky);
+    }
+
+    .hero-title {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.625px;
+      line-height: 1.15;
+      margin-bottom: 8px;
+    }
+
+    .hero-desc {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 400;
+    }
+
+    /* Main Workspace Container */
+    .container {
+      max-width: 980px;
+      margin: -24px auto 0;
+      padding: 0 24px;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Feature Card Primitive */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+      letter-spacing: -0.25px;
+    }
+
+    /* Drag & Drop Upload Zone */
+    .dropzone {
+      border: 1px dashed var(--hairline);
+      background: var(--canvas-soft);
+      border-radius: var(--radius-lg);
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary);
+      background: rgba(0, 117, 222, 0.04);
+    }
+
+    .dropzone-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .dropzone-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .dropzone-sub {
+      font-size: 13px;
+      color: var(--ink-muted);
+      margin-top: 4px;
+    }
+
+    /* File List */
+    .file-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .file-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--canvas-soft);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--ink-secondary);
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius-full);
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-active);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.99);
+    }
+
+    .btn-utility {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-md);
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-utility:hover {
+      background: var(--canvas-soft);
+    }
+
+    /* Metrics Grid (3 Tiles) */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .metric-tile {
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .metric-sticker {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.25px;
+      display: flex;
+      align-items: center;
+    }
+
+    .metric-value {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-top: 6px;
+      color: var(--ink);
+    }
+
+    .metric-sub {
+      font-size: 12px;
+      color: var(--ink-faint);
+      margin-top: 4px;
+    }
+
+    /* Data Table */
+    .table-container {
+      overflow-x: auto;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--hairline);
+      margin-top: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: var(--canvas-soft);
+      color: var(--ink-muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.25px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--hairline);
+      color: var(--ink-secondary);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .td-number {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-green { background: #e8f8ed; color: var(--accent-green); }
+    .badge-orange { background: #fdf1e8; color: var(--accent-orange); }
+    .badge-sky { background: #eef6fd; color: var(--primary); }
+
+    .highlight-row {
+      background: rgba(0, 117, 222, 0.03);
+      font-weight: 600;
+    }
+
+    .highlight-row td {
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero Night Band -->
+  <section class="hero-night">
+    <div class="hero-content">
+      <div class="pill-eyebrow">
+        <span class="pill-dot"></span> NOTION SETTLEMENT WORKSPACE
+      </div>
+      <h1 class="hero-title">온라인 매출 정산 워크스페이스</h1>
+      <p class="hero-desc">수수료율을 직접 입력하지 마세요. 엑셀 원본 데이터를 스스로 역산하여 1원 단위까지 정산합니다.</p>
+    </div>
+  </section>
+
+  <!-- Main Container -->
+  <main class="container">
+    
+    <!-- Upload Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">정산 대상 엑셀 문서</h2>
+        <span style="font-size: 13px; color: var(--ink-muted);" id="fileCountBadge">0개 파일 등록됨</span>
+      </div>
+
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <div class="dropzone-icon">📄</div>
+        <div class="dropzone-text">정산할 엑셀 파일(.xlsx, .xls)을 여기에 끌어다 놓으세요</div>
+        <div class="dropzone-sub">스마트스토어, 쿠팡, 자사몰 등 여러 파일을 한 번에 업로드할 수 있습니다</div>
+      </div>
+      <input type="file" id="fileInput" multiple accept=".xlsx, .xls" style="display: none;">
+
+      <div class="file-chip-list" id="fileChips"></div>
+
+      <div style="margin-top: 18px;">
+        <button class="btn-primary" id="btnRun" onclick="processSettlement()">
+          <span>⚡</span> 엑셀 데이터 분석 및 자동 정산 실행
+        </button>
+      </div>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="metrics-grid" id="metricsGrid" style="display: none;">
+      <div class="metric-tile">
+        <div class="metric-label">
+          <span class="metric-sticker" style="background: var(--accent-sky);"></span> GROSS SALES
+        </div>
+        <div class="metric-value" id="valSales">0원</div>
+        <div class="metric-sub">총 결제/판매 매출액</div>
+      </div>
+
+      <div class="metric-tile">
+        <div class="metric-label">
+          <span class="metric-sticker" style="background: var(--accent-orange);"></span> TOTAL DEDUCTIONS
+        </div>
+        <div class="metric-value" id="valFees" style="color: var(--accent-orange);">0원</div>
+        <div class="metric-sub" id="subRate">실효 수수료 + 환불상계</div>
+      </div>
+
+      <div class="metric-tile">
+        <div class="metric-label">
+          <span class="metric-sticker" style="background: var(--accent-green);"></span> NET PAYOUT
+        </div>
+        <div class="metric-value" id="valPayout" style="color: var(--primary);">0원</div>
+        <div class="metric-sub">판매자 통장 실입금 최종액</div>
+      </div>
+    </div>
+
+    <!-- Result Statement Card -->
+    <div class="card" id="resultCard" style="display: none;">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">정산 명세표 (Statement Summary)</h2>
+          <div style="font-size: 12px; color: var(--ink-muted); margin-top: 2px;" id="overallRateText"></div>
+        </div>
+        <button class="btn-utility" onclick="exportToExcel()">
+          ↓ 정산 결과 엑셀로 다운로드
+        </button>
+      </div>
+
+      <!-- Channel Breakdown Table -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>판매 채널</th>
+              <th>실효 수수료율</th>
+              <th style="text-align: center;">주문건수</th>
+              <th style="text-align: right;">총 판매금액</th>
+              <th style="text-align: right;">실제 수수료</th>
+              <th style="text-align: right;">배송비</th>
+              <th style="text-align: right;">환불 상계액</th>
+            </tr>
+          </thead>
+          <tbody id="channelTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Financial Reconciliation Table -->
+      <div class="table-container" style="margin-top: 18px;">
+        <table>
+          <thead>
+            <tr>
+              <th>항목 구분</th>
+              <th style="text-align: right;">정산 금액</th>
+              <th>산출 및 공제 기준</th>
+            </tr>
+          </thead>
+          <tbody id="summaryTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let uploadedFiles = [];
+    let currentSummary = null;
+
+    const fileInput = document.getElementById('fileInput');
+    const dropzone = document.getElementById('dropzone');
+    const fileChips = document.getElementById('fileChips');
+    const fileCountBadge = document.getElementById('fileCountBadge');
+
+    // Drag & Drop
+    ['dragenter', 'dragover'].forEach(name => {
+      dropzone.addEventListener(name, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(name => {
+      dropzone.addEventListener(name, (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); });
+    });
+    dropzone.addEventListener('drop', (e) => {
+      handleFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', (e) => {
+      handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+      for (let f of files) {
+        if (!uploadedFiles.some(item => item.name === f.name)) {
+          uploadedFiles.push(f);
+        }
+      }
+      renderFileChips();
+    }
+
+    function removeFile(index) {
+      uploadedFiles.splice(index, 1);
+      renderFileChips();
+    }
+
+    function renderFileChips() {
+      fileChips.innerHTML = '';
+      uploadedFiles.forEach((f, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'file-chip';
+        chip.innerHTML = `<span>📄 ${f.name}</span> <span style="cursor:pointer; color:var(--ink-muted);" onclick="removeFile(${idx})">✕</span>`;
+        fileChips.appendChild(chip);
+      });
+      fileCountBadge.textContent = `${uploadedFiles.length}개 파일 등록됨`;
+    }
+
+    function formatKRW(val) {
+      return Math.round(val).toLocaleString() + '원';
+    }
+
+    async function processSettlement() {
+      if (uploadedFiles.length === 0) {
+        alert('정산할 엑셀 파일을 먼저 등록해 주세요.');
+        return;
+      }
+
+      let allRecords = [];
+
+      for (let file of uploadedFiles) {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        if (!rows || rows.length < 2) continue;
+
+        // Header detection
+        let headerRow = 0;
+        let maxCols = 0;
+        for (let i = 0; i < Math.min(10, rows.length); i++) {
+          let validLen = rows[i].filter(c => c !== undefined && c !== null && String(c).trim() !== '').length;
+          if (validLen > maxCols) {
+            maxCols = validLen;
+            headerRow = i;
+          }
+        }
+
+        const header = rows[headerRow].map(c => String(c || '').trim());
+        const headerStr = header.join(' ');
+
+        let channelName = "일반 채널";
+        if (headerStr.includes("네이버페이수수료") || file.name.includes("스마트스토어") || file.name.includes("네이버")) {
+          channelName = "네이버 스마트스토어";
+        } else if (headerStr.includes("판매수수료") || file.name.includes("쿠팡") || headerStr.includes("업체상품명")) {
+          channelName = "쿠팡 윙";
+        } else if (file.name.includes("카카오")) {
+          channelName = "카카오 선물하기";
+        } else if (file.name.includes("11번가") || file.name.includes("지마켓")) {
+          channelName = "11번가/지마켓";
+        } else if (file.name.includes("자사몰") || file.name.includes("토스")) {
+          channelName = "자사몰/PG";
+        }
+
+        // Col indices
+        const findCol = (keys) => header.findIndex(h => keys.some(k => h.replace(/\s+/g, '').includes(k)));
+        const idxOrder = findCol(["주문번호", "order_id", "상품주문번호"]);
+        const idxProduct = findCol(["상품명", "업체상품명", "품목명"]);
+        const idxSale = findCol(["결제금액", "판매금액", "결제액", "매출액", "주문금액"]);
+        const idxFee = findCol(["수수료", "판매수수료", "네이버페이수수료"]);
+        const idxLinkFee = findCol(["매출연동수수료"]);
+        const idxShipping = findCol(["배송비", "정산배송비"]);
+        const idxNet = findCol(["정산예정금액", "정산금액", "실정산액"]);
+
+        for (let r = headerRow + 1; r < rows.length; r++) {
+          const row = rows[r];
+          if (!row || row.length === 0) continue;
+
+          const toNum = (val) => {
+            if (!val) return 0;
+            let n = Number(String(val).replace(/,/g, '').replace('원', ''));
+            return isNaN(n) ? 0 : n;
+          };
+
+          const saleAmount = idxSale !== -1 ? toNum(row[idxSale]) : 0;
+          const shippingFee = idxShipping !== -1 ? toNum(row[idxShipping]) : 0;
+          const netAmount = idxNet !== -1 ? toNum(row[idxNet]) : 0;
+
+          let fee = 0;
+          if (idxFee !== -1 && row[idxFee] !== undefined) {
+            fee = toNum(row[idxFee]);
+            if (idxLinkFee !== -1) fee += toNum(row[idxLinkFee]);
+          } else if (idxNet !== -1 && netAmount !== 0 && saleAmount !== 0) {
+            fee = saleAmount + shippingFee - netAmount;
+          }
+
+          const isRefund = saleAmount < 0;
+          allRecords.push({
+            channel: channelName,
+            orderId: idxOrder !== -1 ? String(row[idxOrder] || '') : `ORD-${r}`,
+            productName: idxProduct !== -1 ? String(row[idxProduct] || '') : '상품',
+            saleAmount: saleAmount,
+            fee: fee,
+            shippingFee: shippingFee,
+            isRefund: isRefund
+          });
+        }
+      }
+
+      // Aggregate
+      let totalSales = 0;
+      let totalFee = 0;
+      let totalShipping = 0;
+      let refundOffset = 0;
+      let channelMap = {};
+
+      allRecords.forEach(rec => {
+        if (!channelMap[rec.channel]) {
+          channelMap[rec.channel] = { count: 0, sales: 0, fee: 0, shipping: 0, refund: 0, rate: 0 };
+        }
+        channelMap[rec.channel].count++;
+
+        if (rec.isRefund) {
+          let loss = Math.abs(rec.saleAmount - rec.fee + rec.shippingFee);
+          refundOffset += loss;
+          channelMap[rec.channel].refund += loss;
+        } else {
+          totalSales += rec.saleAmount;
+          totalFee += rec.fee;
+          totalShipping += rec.shippingFee;
+          channelMap[rec.channel].sales += rec.saleAmount;
+          channelMap[rec.channel].fee += rec.fee;
+          channelMap[rec.channel].shipping += rec.shippingFee;
+        }
+      });
+
+      for (let ch in channelMap) {
+        if (channelMap[ch].sales > 0) {
+          channelMap[ch].rate = (channelMap[ch].fee / channelMap[ch].sales) * 100;
+        }
+      }
+
+      let overallRate = totalSales > 0 ? (totalFee / totalSales) * 100 : 0;
+      let netPayout = Math.max(0, totalSales - totalFee + totalShipping - refundOffset);
+      let carryoverOut = (totalSales - totalFee + totalShipping - refundOffset < 0) ? Math.abs(totalSales - totalFee + totalShipping - refundOffset) : 0;
+
+      currentSummary = {
+        totalRecords: allRecords.length,
+        totalSales,
+        totalFee,
+        overallRate,
+        totalShipping,
+        refundOffset,
+        netPayout,
+        carryoverOut,
+        channelMap,
+        records: allRecords
+      };
+
+      renderResults();
+    }
+
+    function renderResults() {
+      if (!currentSummary) return;
+
+      document.getElementById('metricsGrid').style.display = 'grid';
+      document.getElementById('resultCard').style.display = 'block';
+
+      document.getElementById('valSales').textContent = formatKRW(currentSummary.totalSales);
+      document.getElementById('valFees').textContent = formatKRW(currentSummary.totalFee + currentSummary.refundOffset);
+      document.getElementById('valPayout').textContent = formatKRW(currentSummary.netPayout);
+      document.getElementById('subRate').textContent = `실효 수수료 (${currentSummary.overallRate.toFixed(2)}%) + 환불`;
+      document.getElementById('overallRateText').textContent = `● 전체 실효 수수료율: 평균 ${currentSummary.overallRate.toFixed(2)}% (엑셀 원본 역산출)`;
+
+      // Channel Table
+      const chTbody = document.getElementById('channelTableBody');
+      chTbody.innerHTML = '';
+      for (let ch in currentSummary.channelMap) {
+        let d = currentSummary.channelMap[ch];
+        let badgeClass = ch.includes('스마트스토어') ? 'badge-green' : (ch.includes('쿠팡') ? 'badge-orange' : 'badge-sky');
+        let row = `
+          <tr>
+            <td><span class="badge ${badgeClass}">${ch}</span></td>
+            <td><strong>${d.rate.toFixed(2)}%</strong></td>
+            <td style="text-align: center;">${d.count}건</td>
+            <td class="td-number">${formatKRW(d.sales)}</td>
+            <td class="td-number" style="color:var(--accent-orange);">${formatKRW(d.fee)}</td>
+            <td class="td-number">${formatKRW(d.shipping)}</td>
+            <td class="td-number" style="color:var(--accent-orange);">${formatKRW(d.refund)}</td>
+          </tr>
+        `;
+        chTbody.innerHTML += row;
+      }
+
+      // Summary Table
+      const sumTbody = document.getElementById('summaryTableBody');
+      sumTbody.innerHTML = `
+        <tr>
+          <td>(+) 총 판매금액</td>
+          <td class="td-number"><strong>${formatKRW(currentSummary.totalSales)}</strong></td>
+          <td style="color:var(--ink-muted);">정상 결제 주문 총 판매액</td>
+        </tr>
+        <tr>
+          <td>(-) 총 공제 수수료</td>
+          <td class="td-number" style="color:var(--accent-orange);">${formatKRW(currentSummary.totalFee)}</td>
+          <td style="color:var(--ink-muted);">엑셀 실데이터 역산 공제액 (평균 ${currentSummary.overallRate.toFixed(2)}%)</td>
+        </tr>
+        <tr>
+          <td>(+) 배송비 정산액</td>
+          <td class="td-number">${formatKRW(currentSummary.totalShipping)}</td>
+          <td style="color:var(--ink-muted);">고객 결제 배송비</td>
+        </tr>
+        <tr>
+          <td>(-) 반품/환불 상계액</td>
+          <td class="td-number" style="color:var(--accent-orange);">${formatKRW(currentSummary.refundOffset)}</td>
+          <td style="color:var(--ink-muted);">취소/환불 주문 자동 차감 상계액</td>
+        </tr>
+        <tr class="highlight-row">
+          <td>(=) 최종 실지급액</td>
+          <td class="td-number" style="font-size:16px;"><strong>${formatKRW(currentSummary.netPayout)}</strong></td>
+          <td>판매자 계좌 실입금 최종 확정액</td>
+        </tr>
+      `;
+
+      window.scrollTo({ top: document.getElementById('metricsGrid').offsetTop - 30, behavior: 'smooth' });
+    }
+
+    function exportToExcel() {
+      if (!currentSummary) return;
+
+      const wsData = [
+        ["Notion Settlement Workspace"],
+        [`Generated: ${new Date().toISOString()} | Effective Rate: ${currentSummary.overallRate.toFixed(2)}%`],
+        [],
+        ["항목", "정산 금액", "비고"],
+        ["(+) 총 판매금액", currentSummary.totalSales, "정상 주문 총매출"],
+        ["(-) 총 공제 수수료", currentSummary.totalFee, `엑셀 실데이터 역산 (${currentSummary.overallRate.toFixed(2)}%)`],
+        ["(+) 배송비 정산액", currentSummary.totalShipping, "배송비"],
+        ["(-) 반품/환불 상계액", currentSummary.refundOffset, "반품 차감액"],
+        ["(=) 최종 실지급액", currentSummary.netPayout, "실입금액"]
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Notion Summary");
+      XLSX.writeFile(wb, `Notion_Settlement_${currentSummary.overallRate.toFixed(2)}pct.xlsx`);
+    }
+  </script>
+</body>
+</html>

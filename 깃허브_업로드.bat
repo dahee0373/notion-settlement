@@ -2,7 +2,7 @@
 chcp 65001 > nul
 title GitHub 저장소 생성 및 코드 업로드
 
-set "PATH=%~dp0tools\bin;%~dp0tools\git\cmd;%PATH%"
+set "PATH=%LOCALAPPDATA%\Programs\GitHub CLI;%LOCALAPPDATA%\Programs\Git\cmd;%~dp0tools\bin;%~dp0tools\git\cmd;%PATH%"
 
 echo ========================================================
 echo  GitHub 저장소 생성 및 푸시 (GitHub CLI)
@@ -19,7 +19,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [1/3] 변경 사항 최종 커밋 확인...
+echo [1/3] 변경 사항 최종 확인...
 git add .
 git commit -m "feat: complete Notion settlement workspace" > nul 2>&1
 

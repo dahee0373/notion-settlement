@@ -2,15 +2,15 @@
 chcp 65001 > nul
 title GitHub CLI 로그인
 
-set "PATH=%~dp0tools\bin;%~dp0tools\git\cmd;%PATH%"
+set "PATH=%LOCALAPPDATA%\Programs\GitHub CLI;%LOCALAPPDATA%\Programs\Git\cmd;%~dp0tools\bin;%~dp0tools\git\cmd;%PATH%"
 
 echo ========================================================
 echo  GitHub CLI 간편 웹 브라우저 로그인을 시작합니다.
 echo ========================================================
 echo.
-echo 1. 잠시 후 콘솔에 8자리 인증 코드 (예: ABCD-1234) 가 출력됩니다.
+echo 1. 콘솔에 8자리 인증 코드 (예: ABCD-1234) 가 출력됩니다.
 echo 2. 엔터를 누르면 웹 브라우저가 자동으로 열립니다.
-echo 3. 브라우저에 해당 8자리 코드를 입력하고 [Authorize] 를 누르면 끝납니다!
+echo 3. 브라우저에 8자리 코드를 입력하고 [Authorize] 를 누르면 끝납니다!
 echo.
 echo ========================================================
 echo.
